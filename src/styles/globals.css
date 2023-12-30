@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .test-input {
+        @apply w-full rounded-sm bg-stone-800 p-1 outline-none hover:cursor-pointer hover:bg-stone-900 hover:ring-1 hover:ring-amber-600 focus:cursor-text;
+    }
+    .click-span {
+        @apply cursor-pointer select-none text-amber-600 underline hover:text-amber-700;
+    }
+    .correct-choice {
+        @apply after:absolute after:-left-5 after:top-[2px] after:text-xl  after:content-['>'];
+    }
+}

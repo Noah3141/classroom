@@ -1,0 +1,103 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
+import { createTRPCRouter, teacherProcedure } from "~/server/api/trpc";
+
+export type TextQuestion = z.infer<typeof TextQuestion>;
+const TextQuestion = z.object({
+    prompt: z.string(),
+    type: z.enum(["Phrase", "ShortAnswer", "Essay"]),
+});
+
+export type ChoiceQuestion = z.infer<typeof ChoiceQuestion>;
+const ChoiceQuestion = z.object({
+    prompt: z.string(),
+    correctAnswer: z.number(),
+    choices: z.array(z.string()),
+});
+
+export type CreateTestForm = z.infer<typeof CreateTestForm>;
+const CreateTestForm = z.object({
+    title: z.string().nullable(),
+    textQuestions: z.array(TextQuestion),
+    choiceQuestions: z.array(ChoiceQuestion),
+});
+
+export const testRouter = createTRPCRouter({
+    create: teacherProcedure
+        .input(CreateTestForm)
+        .mutation(async ({ ctx, input }) => {
+            if (!input.title) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Please provide a title",
+                });
+            }
+
+            const test = await ctx.db.test.create({
+                data: {
+                    title: input.title,
+                    teacherId: ctx.session.user.id,
+                },
+            });
+
+            const choiceQuestions = input.choiceQuestions.map((q) => ({
+                ...q,
+                testId: test.id,
+            }));
+            const textQuestions = input.textQuestions.map((q) => ({
+                ...q,
+                testId: test.id,
+            }));
+
+            await ctx.db.textQuestion.createMany({
+                data: textQuestions,
+            });
+
+            await ctx.db.choiceQuestion.createMany({
+                data: choiceQuestions,
+            });
+
+            return;
+        }),
+    getById: teacherProcedure
+        .input(z.object({ testId: z.string().nullable() }))
+        .query(async ({ ctx, input }) => {
+            if (!input.testId) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Something went wrong...",
+                });
+            }
+            const test = await ctx.db.test.findUnique({
+                where: {
+                    id: input.testId,
+                },
+                include: {
+                    choiceQuestions: true,
+                    textQuestions: true,
+                    submissions: {
+                        include: { testTaker: true },
+                    },
+                    classes: true,
+                },
+            });
+            if (!test) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "No test found!",
+                });
+            }
+
+            return test;
+        }),
+    remove: teacherProcedure
+        .input(z.object({ testId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            return await ctx.db.test.delete({
+                where: {
+                    id: input.testId,
+                },
+            });
+        }),
+});

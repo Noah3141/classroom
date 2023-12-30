@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+    // Further reading:
+    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+    url      = env("DATABASE_URL")
+}
+
+// Necessary for Next auth
+model Account {
+    id                String  @id @default(cuid())
+    userId            String
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String? // @db.Text
+    access_token      String? // @db.Text
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? // @db.Text
+    session_state     String?
+    user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+}
+
+model Session {
+    id           String   @id @default(cuid())
+    sessionToken String   @unique
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId       String
+}
+
+model User {
+    id             String          @id @default(cuid())
+    name           String?
+    email          String?         @unique
+    emailVerified  DateTime?
+    image          String?
+    accounts       Account[]
+    sessions       Session[]
+    roles          Role[]          @default([Student])
+    createdTests   Test[]          @relation("creator")
+    submittedTests SubmittedTest[] @relation("testTaker")
+    classes        Class[]         @relation("student")
+    taughtClasses  Class[]         @relation("teacher")
+}
+
+enum Role {
+    Admin
+    Student
+    Teacher
+}
+
+model VerificationToken {
+    identifier String
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+}
+
+model Test {
+    id              String           @id @default(cuid())
+    title           String
+    choiceQuestions ChoiceQuestion[]
+    textQuestions   TextQuestion[]
+    teacher         User             @relation("creator", fields: [teacherId], references: [id])
+    teacherId       String
+    submissions     SubmittedTest[]
+    lastSubmission  DateTime?
+    classes         Class[]
+}
+
+model ChoiceQuestion {
+    id            String   @id @default(cuid())
+    prompt        String
+    choices       String[]
+    test          Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+    testId        String
+    correctAnswer Int
+}
+
+model TextQuestion {
+    id     String             @id @default(cuid())
+    prompt String
+    type   TextQuestionLength
+    test   Test               @relation(fields: [testId], references: [id], onDelete: Cascade)
+    testId String
+}
+
+enum TextQuestionLength {
+    Phrase
+    ShortAnswer
+    Essay
+}
+
+model SubmittedTest {
+    id            String         @id @default(cuid())
+    choiceAnswers ChoiceAnswer[]
+    textAnswers   TextAnswer[]
+
+    testTaker   User   @relation("testTaker", fields: [testTakerId], references: [id])
+    testTakerId String
+
+    test           Test     @relation(fields: [testId], references: [id])
+    testId         String
+    submissionDate DateTime @default(now())
+    score          Int?
+
+    class   Class  @relation(fields: [classId], references: [id], onDelete: SetDefault)
+    classId String
+}
+
+model ChoiceAnswer {
+    testTakerId     String
+    questionId      String
+    value           Int
+    submittedTest   SubmittedTest @relation(fields: [submittedTestId], references: [id])
+    submittedTestId String
+    correct         Boolean
+
+    @@unique([testTakerId, questionId])
+}
+
+model TextAnswer {
+    testTakerId     String
+    questionId      String
+    value           String
+    submittedTest   SubmittedTest @relation(fields: [submittedTestId], references: [id])
+    submittedTestId String
+    correct         Boolean?
+
+    @@unique([testTakerId, questionId])
+}
+
+model Class {
+    id String @id @default(cuid())
+
+    title            String
+    season           Season
+    students         User[]          @relation("student")
+    teacher          User            @relation("teacher", fields: [teacherId], references: [id])
+    teacherId        String
+    submittedTests   SubmittedTest[]
+    tests            Test[]
+    validEmailSuffix String[]
+    createdAt        DateTime        @default(now())
+    lastSubmission   DateTime?
+    schoolYear       Int
+}
+
+enum Season {
+    Fall
+    Winter
+    Spring
+    Summer
+}
