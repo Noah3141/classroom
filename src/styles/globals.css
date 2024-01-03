@@ -4,7 +4,9 @@
 
 @layer components {
     .test-input {
-        @apply w-full rounded-sm bg-stone-800 p-1 outline-none hover:cursor-pointer hover:bg-stone-900 hover:ring-1 hover:ring-amber-600 focus:cursor-text;
+        @apply w-full rounded-sm bg-stone-800 p-2 outline-none 
+        hover:cursor-pointer hover:bg-stone-900 hover:ring-1 hover:ring-amber-600 
+        focus:cursor-text focus:bg-stone-900 focus:ring-1 focus:ring-amber-600 focus:hover:bg-stone-900;
     }
     .click-span {
         @apply cursor-pointer select-none text-amber-600 underline hover:text-amber-700;

@@ -13,10 +13,12 @@ const JoinClassPage = () => {
     const router = useRouter();
     const { data: session, status } = useSession();
 
-    const classId = (router.query.classId as string) ?? null;
+    const classId = router.query.classId
+        ? (router.query.classId as string)
+        : null;
 
     const { data: classroom, isLoading: classroomLoading } =
-        api.class.getById.useQuery({ classId });
+        api.class.getById.useQuery({ classId: classId });
 
     const dataState = api.useContext();
     const joinClassToast = "JoinClassToastId";

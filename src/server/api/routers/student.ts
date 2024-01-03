@@ -1,3 +1,4 @@
+import { SubmittedTest } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -27,7 +28,10 @@ const GradedAnswer = z.object({
     correct: z.boolean(),
 });
 
-type GradedAnswer = z.infer<typeof GradedAnswer>;
+export type GradedAnswer = z.infer<typeof GradedAnswer>;
+export type TextAnswer = z.infer<typeof TextAnswer>;
+export type ChoiceAnswer = z.infer<typeof ChoiceAnswer>;
+export type SubmitTestForm = z.infer<typeof SubmitTestForm>;
 
 export const studentRouter = createTRPCRouter({
     getSubmittedTests: studentProcedure
@@ -50,7 +54,8 @@ export const studentRouter = createTRPCRouter({
         }),
     submitTest: studentProcedure
         .input(SubmitTestForm)
-        .query(async ({ ctx, input }) => {
+        .mutation(async ({ ctx, input }) => {
+            // Find the test in question
             const test = await ctx.db.test.findUnique({
                 where: { id: input.testId },
                 include: {
@@ -65,6 +70,25 @@ export const studentRouter = createTRPCRouter({
                     message: "No test found!",
                 });
             }
+
+            // Check if this user already has a submission for that test
+            const alreadySubmitted: SubmittedTest | null =
+                await ctx.db.submittedTest.findFirst({
+                    where: {
+                        testTakerId: ctx.session.user.id,
+                    },
+                });
+
+            const wasResubmit = !!alreadySubmitted;
+
+            if (wasResubmit) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "You've already submitted this test!",
+                });
+            }
+
+            // Todo Offer update functionality?
 
             const submission = await ctx.db.submittedTest.create({
                 data: {
@@ -116,11 +140,13 @@ export const studentRouter = createTRPCRouter({
                 });
                 return {
                     graded: true,
+                    wasResubmit: wasResubmit,
                     submission,
                 };
             } else {
                 return {
                     graded: false,
+                    wasResubmit: wasResubmit,
                     submission,
                 };
             }

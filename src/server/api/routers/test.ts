@@ -1,7 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { createTRPCRouter, teacherProcedure } from "~/server/api/trpc";
+import {
+    createTRPCRouter,
+    protectedProcedure,
+    teacherProcedure,
+} from "~/server/api/trpc";
 
 export type TextQuestion = z.infer<typeof TextQuestion>;
 const TextQuestion = z.object({
@@ -60,7 +64,7 @@ export const testRouter = createTRPCRouter({
 
             return;
         }),
-    getById: teacherProcedure
+    getById: protectedProcedure
         .input(z.object({ testId: z.string().nullable() }))
         .query(async ({ ctx, input }) => {
             if (!input.testId) {

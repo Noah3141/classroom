@@ -31,7 +31,7 @@ export const classRouter = createTRPCRouter({
             if (!input.classId) {
                 throw new TRPCError({
                     code: "BAD_REQUEST",
-                    message: "No class found!",
+                    message: "No class specified!",
                 });
             }
 
@@ -43,6 +43,13 @@ export const classRouter = createTRPCRouter({
                     _count: true,
                 },
             });
+
+            if (!classroom) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "No class found!",
+                });
+            }
 
             return classroom;
         }),

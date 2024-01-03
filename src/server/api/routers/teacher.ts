@@ -80,10 +80,17 @@ export const teacherRouter = createTRPCRouter({
     removeClass: teacherProcedure
         .input(
             z.object({
-                classId: z.string(),
+                classId: z.string().nullable(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
+            if (!input.classId) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Please specify a class to remove!",
+                });
+            }
+
             return await ctx.db.class.delete({
                 where: {
                     id: input.classId,

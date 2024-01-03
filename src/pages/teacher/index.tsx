@@ -33,7 +33,7 @@ const ClassList = () => {
                 {classes.map((classroom) => {
                     return (
                         <Link href={`/classroom/${classroom.id}`}>
-                            <div className="flex flex-row justify-between p-2 hover:bg-stone-800 ">
+                            <div className="flex flex-row justify-between rounded-md p-2 hover:bg-stone-800">
                                 <div className="">
                                     <span className="">{classroom.title}</span>
                                 </div>

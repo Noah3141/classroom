@@ -67,3 +67,7 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
  * @example type HelloOutput = RouterOutputs['example']['hello']
  */
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+export type ClassGottenById = RouterOutputs["class"]["getById"];
+export type TestGottenById = RouterOutputs["test"]["getById"];
+export type SubmitTestRes = RouterOutputs["student"]["submitTest"];

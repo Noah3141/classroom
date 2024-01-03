@@ -44,9 +44,9 @@ const CreateTestPage = () => {
     const { data, status } = useSession();
     const router = useRouter();
 
-    const testId = (router.query.testId as string) ?? "";
+    const testId = router.query.testId ? (router.query.testId as string) : null;
 
-    const { data: initialTest } = api.test.getById.useQuery({ testId });
+    const { data: initialTest } = api.test.getById.useQuery({ testId: testId });
 
     const [form, setForm] = useState<CreateTestForm>(initialTest ?? blankForm);
 
