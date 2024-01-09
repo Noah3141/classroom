@@ -19,6 +19,7 @@ import { alphabetize } from "~/utils/tools";
 
 import { PiChecks } from "react-icons/pi";
 import Link from "next/link";
+import { z } from "zod";
 
 const TakeTestPage = () => {
     const session = useSession();
@@ -162,28 +163,33 @@ const Test = ({ test, classroom }: TestProps) => {
                         status={statusSubmittingTest}
                         onClick={(e) => {
                             e.preventDefault();
-                            const [id, missing, validatedForm] =
-                                validateNoneMissing(form);
-                            if (missing) {
-                                toast.error(
-                                    "Don't forget to answer all questions!",
-                                );
-                                const input = document.getElementById(id);
-                                if (!input) {
-                                    throw new Error(id);
-                                }
-                                input.scrollIntoView();
-                                const highlights = [
-                                    "ring-1",
-                                    "ring-red-500",
-                                    "ring-offset-4",
-                                ];
-                                input.classList.add(...highlights);
-                                input.onfocus = (e) => {
-                                    input.classList.remove(...highlights);
-                                };
-                            } else {
+                            try {
+                                const validatedForm = validateForm(form);
                                 submitTest(validatedForm);
+                            } catch (err) {
+                                if (err instanceof Error) {
+                                    toast.error(
+                                        "Don't forget to answer all questions!",
+                                    );
+                                    const input = document.getElementById(
+                                        err.message,
+                                    );
+                                    if (!input) {
+                                        throw new Error(err.message);
+                                    }
+                                    input.scrollIntoView();
+                                    const highlights = [
+                                        "ring-1",
+                                        "ring-red-500",
+                                        "ring-offset-4",
+                                    ];
+                                    input.classList.add(...highlights);
+                                    input.onfocus = (e) => {
+                                        input.classList.remove(...highlights);
+                                    };
+                                } else {
+                                    throw err;
+                                }
                             }
                         }}
                     >
@@ -195,41 +201,33 @@ const Test = ({ test, classroom }: TestProps) => {
     );
 };
 
-function validateNoneMissing(
-    form: TestForm,
-): [string, true, null] | [null, false, SubmitTestForm] {
-    let out: [string, true, null] | [null, false, SubmitTestForm];
-
+function validateForm(form: TestForm): SubmitTestForm {
     const choiceAnswers = form.choiceAnswers.map((ca, cai) => {
-        if (typeof ca.value == "undefined") {
-            console.log(ca);
-            out = [`question-${cai}`, true, null];
-        } else {
-            return {
-                value: ca.value,
-                questionId: ca.questionId,
-            };
+        try {
+            const validAnswer = z
+                .object({ value: z.number(), questionId: z.string() })
+                .parse(ca);
+            return validAnswer;
+        } catch {
+            const e = new Error(ca.questionId);
+            throw e;
         }
     });
-
-    if (choiceAnswers.some((entry) => !entry)) {
-        return out!;
-    }
 
     const textAnswers = form.textAnswers.map((ta, tai) => {
-        if (!ta.value || ta.value === "") {
-            out = [`tq-${tai}`, true, null];
-        } else {
-            return {
-                value: ta.value,
-                questionId: ta.questionId,
-            };
+        try {
+            const validAnswer = z
+                .object({
+                    value: z.string(),
+                    questionId: z.string(),
+                })
+                .parse(ta);
+            return validAnswer;
+        } catch {
+            const e = new Error(ta.questionId);
+            throw e;
         }
     });
-
-    if (textAnswers.some((entry) => !entry)) {
-        return out!;
-    }
 
     const validatedForm: SubmitTestForm = {
         ...form,
@@ -237,9 +235,7 @@ function validateNoneMissing(
         textAnswers: textAnswers,
     };
 
-    out = [null, false, validatedForm];
-
-    return out;
+    return validatedForm;
 }
 
 type ChoiceQuestionProps = {
