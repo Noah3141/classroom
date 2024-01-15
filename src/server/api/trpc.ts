@@ -157,6 +157,23 @@ const enforceUserIsStudent = t.middleware(({ ctx, next }) => {
     }
 });
 
+const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
+    if (!ctx.session?.user) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    if (ctx.session.user.roles.includes("Admin")) {
+        return next({
+            ctx: {
+                // infers the `session` as non-nullable
+                session: { ...ctx.session, user: ctx.session.user },
+            },
+        });
+    } else {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+});
+
 /**
  * Protected (authenticated) procedure
  *
@@ -168,3 +185,4 @@ const enforceUserIsStudent = t.middleware(({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);
 export const teacherProcedure = t.procedure.use(enforceUserIsTeacher);
 export const studentProcedure = t.procedure.use(enforceUserIsStudent);
+export const adminProcedure = t.procedure.use(enforceUserIsAdmin);
