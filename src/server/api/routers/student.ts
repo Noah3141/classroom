@@ -26,6 +26,7 @@ const GradedChoiceAnswer = z.object({
     testTakerId: z.string(),
     submittedTestId: z.string(),
     correct: z.boolean(),
+    frequency: z.number(),
 });
 
 export type GradedChoiceAnswer = z.infer<typeof GradedChoiceAnswer>;
@@ -106,22 +107,32 @@ export const studentRouter = createTRPCRouter({
                 answerKey[question.id] = question.correctAnswer;
             });
 
-            const gradedChoiceAnswers: GradedChoiceAnswer[] =
-                input.choiceAnswers.map((studentAnswer) => {
+            const gradedChoiceAnswers: GradedChoiceAnswer[] = await Promise.all(
+                input.choiceAnswers.map(async (studentAnswer) => {
                     const correct =
                         studentAnswer.value ===
                         answerKey[studentAnswer.questionId];
+
+                    const otherChoiceAnswers =
+                        await ctx.db.choiceAnswer.findMany({
+                            where: {
+                                questionId: studentAnswer.questionId,
+                                value: studentAnswer.value,
+                            },
+                        });
 
                     const gradedChoiceAnswer = {
                         value: studentAnswer.value,
                         questionId: studentAnswer.questionId,
                         testTakerId: ctx.session.user.id,
                         submittedTestId: submission.id,
+                        frequency: otherChoiceAnswers.length,
                         correct,
                     };
 
                     return gradedChoiceAnswer;
-                });
+                }),
+            );
 
             await ctx.db.choiceAnswer.createMany({
                 data: gradedChoiceAnswers,
