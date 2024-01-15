@@ -75,7 +75,7 @@ model Test {
     title           String
     choiceQuestions ChoiceQuestion[]
     textQuestions   TextQuestion[]
-    teacher         User             @relation("creator", fields: [teacherId], references: [id])
+    teacher         User             @relation("creator", fields: [teacherId], references: [id], onDelete: Cascade)
     teacherId       String
     submissions     SubmittedTest[]
     lastSubmission  DateTime?
@@ -110,10 +110,10 @@ model SubmittedTest {
     choiceAnswers ChoiceAnswer[]
     textAnswers   TextAnswer[]
 
-    testTaker   User   @relation("testTaker", fields: [testTakerId], references: [id])
+    testTaker   User   @relation("testTaker", fields: [testTakerId], references: [id], onDelete: Cascade)
     testTakerId String
 
-    test           Test     @relation(fields: [testId], references: [id])
+    test           Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
     testId         String
     submissionDate DateTime @default(now())
     score          Int?
@@ -126,7 +126,7 @@ model ChoiceAnswer {
     testTakerId     String
     questionId      String
     value           Int
-    submittedTest   SubmittedTest @relation(fields: [submittedTestId], references: [id])
+    submittedTest   SubmittedTest @relation(fields: [submittedTestId], references: [id], onDelete: Cascade)
     submittedTestId String
     correct         Boolean
 
@@ -137,7 +137,7 @@ model TextAnswer {
     testTakerId     String
     questionId      String
     value           String
-    submittedTest   SubmittedTest @relation(fields: [submittedTestId], references: [id])
+    submittedTest   SubmittedTest @relation(fields: [submittedTestId], references: [id], onDelete: Cascade)
     submittedTestId String
     correct         Boolean?
 
@@ -150,7 +150,7 @@ model Class {
     title            String
     season           Season
     students         User[]          @relation("student")
-    teacher          User            @relation("teacher", fields: [teacherId], references: [id])
+    teacher          User            @relation("teacher", fields: [teacherId], references: [id], onDelete: Cascade)
     teacherId        String
     submittedTests   SubmittedTest[]
     tests            Test[]

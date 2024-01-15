@@ -1,4 +1,5 @@
 import { signIn, useSession } from "next-auth/react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
 import toast from "react-hot-toast";
@@ -20,7 +21,7 @@ const JoinClassPage = () => {
     const { data: classroom, isLoading: classroomLoading } =
         api.class.getById.useQuery({ classId: classId });
 
-    const dataState = api.useContext();
+    const dataState = api.useUtils();
     const joinClassToast = "JoinClassToastId";
     const { mutate: joinClass, isLoading: joiningLoading } =
         api.student.joinClass.useMutation({
@@ -29,7 +30,7 @@ const JoinClassPage = () => {
             },
             onSuccess: () => {
                 toast.success("Success!", { id: joinClassToast });
-                void dataState.class.invalidate();
+                void dataState.student.invalidate();
                 void router.push("/student");
             },
             onError: (e) => {
@@ -48,6 +49,15 @@ const JoinClassPage = () => {
     return (
         <CardPanel>
             <div className="col-span-full flex h-[30vh] flex-row items-center justify-center">
+                <div className="absolute left-6 top-6 transition-all">
+                    <span
+                        onClick={() => {
+                            router.back();
+                        }}
+                    >
+                        <span className="click-span ">{"<"} back</span>
+                    </span>
+                </div>
                 <Card className="flex-col items-center gap-3">
                     <span>
                         {classroom.title} - {classroom.season}{" "}

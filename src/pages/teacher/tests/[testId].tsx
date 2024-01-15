@@ -20,6 +20,7 @@ const TestPanelPage = () => {
     const router = useRouter();
 
     const urlTestId = (router.query.testId as string) ?? null;
+
     const { data: test, isLoading: testLoading } = api.test.getById.useQuery({
         testId: urlTestId,
     });

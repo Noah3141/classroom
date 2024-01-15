@@ -4,8 +4,10 @@ import { z } from "zod";
 import {
     createTRPCRouter,
     protectedProcedure,
+    studentProcedure,
     teacherProcedure,
 } from "~/server/api/trpc";
+import { ClassSubmissions } from "~/utils/api";
 
 export const classRouter = createTRPCRouter({
     getByTeacherId: teacherProcedure.query(async ({ ctx }) => {
@@ -52,5 +54,50 @@ export const classRouter = createTRPCRouter({
             }
 
             return classroom;
+        }),
+    getIfStudent: studentProcedure
+        .input(z.object({ classId: z.string().nullable() }))
+        .query(async ({ ctx, input }) => {
+            if (!input.classId) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "No class specified!",
+                });
+            }
+
+            const classroom = await ctx.db.class.findUnique({
+                where: {
+                    id: input.classId,
+                },
+                include: { students: { select: { id: true } }, _count: true },
+            });
+
+            if (!classroom) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "No class found!",
+                });
+            }
+
+            return classroom;
+        }),
+    getSubmissions: teacherProcedure
+        .input(z.object({ classId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const submissions = await ctx.db.submittedTest.findMany({
+                where: {
+                    classId: input.classId,
+                    class: {
+                        teacherId: ctx.session.user.id,
+                    },
+                },
+                include: {
+                    testTaker: true,
+                    test: true,
+                    _count: true,
+                },
+            });
+
+            return submissions;
         }),
 });

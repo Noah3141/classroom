@@ -29,11 +29,11 @@ const ClassList = () => {
     return (
         <div>
             <h1 className="mb-3">Classes</h1>
-            <div className="flex max-h-[45vh] flex-col divide-y divide-stone-800 overflow-y-scroll">
+            <div className="flex max-h-[45vh] flex-col divide-y divide-stone-800 overflow-y-auto">
                 {classes.map((classroom) => {
                     return (
                         <Link href={`/classroom/${classroom.id}`}>
-                            <div className="flex flex-row justify-between rounded-md p-2 hover:bg-stone-800">
+                            <div className="flex flex-row justify-between rounded-md p-2  transition-all duration-200 ease-out hover:bg-stone-800">
                                 <div className="">
                                     <span className="">{classroom.title}</span>
                                 </div>
@@ -67,11 +67,11 @@ const TestsList = () => {
     return (
         <div>
             <h1>Tests</h1>
-            <div className="my-3 flex flex-col divide-y divide-stone-800">
+            <div className="my-3 flex max-h-[45vh] flex-col  divide-y divide-stone-800 overflow-y-auto">
                 {tests.map((test) => {
                     return (
                         <Link href={`/teacher/tests/${test.id}`}>
-                            <div className="flex flex-row justify-between p-2 hover:bg-stone-800">
+                            <div className="flex flex-row justify-between rounded-md p-2 transition-all duration-200 ease-out hover:bg-stone-800">
                                 <h1>{test.title}</h1>
                                 <div className="grid grid-cols-2">
                                     <div className="col-span-1">
@@ -94,13 +94,16 @@ const TestsList = () => {
 };
 
 const CreateClassWizard = () => {
-    const dataState = api.useContext();
-    const [expanded, setExpanded] = useState(false);
-    const [form, setForm] = useState<CreateClassForm>({
+    const currentYear: number = new Date().getFullYear();
+
+    const BlankState: CreateClassForm = {
         season: "Fall",
         title: null,
-        year: 2023,
-    });
+        year: currentYear,
+    };
+    const dataState = api.useUtils();
+    const [expanded, setExpanded] = useState(false);
+    const [form, setForm] = useState<CreateClassForm>(BlankState);
 
     const createClassToastId = "createClassToastId";
     const {
@@ -117,9 +120,13 @@ const CreateClassWizard = () => {
             setTimeout(() => {
                 void reset();
             }, 1000);
+            setForm(BlankState);
         },
         onError: (e) => {
             toast.error(e.message, { id: createClassToastId });
+            setTimeout(() => {
+                void reset();
+            }, 1000);
         },
     });
 
@@ -151,7 +158,7 @@ const CreateClassWizard = () => {
                     >
                         <input
                             placeholder="Intro to subject"
-                            value={form.title ?? undefined}
+                            value={form.title ?? ""}
                             onChange={(e) => {
                                 setForm((p) => ({
                                     ...p,
@@ -196,6 +203,7 @@ const CreateClassWizard = () => {
                 </div>
                 <Button
                     status={status}
+                    disabled={status !== "idle"}
                     onClick={() => {
                         createClass(form);
                     }}
@@ -232,25 +240,30 @@ const TeacherPage = () => {
 
     return (
         <CardPanel>
-            <Card className="col-span-6 w-full flex-col">
-                <ClassList />
-                <CreateClassWizard />
-            </Card>
-            <Card className="col-span-6 w-full flex-col">
-                <TestsList />
-                <CreateTestWizard />
-            </Card>
-            <Card className="min-w-fit  flex-col gap-3 ">
-                {data.user.name}
-                <Button
-                    className="whitespace-nowrap"
-                    onClick={() => {
-                        void signOut();
-                    }}
-                >
-                    Sign Out
-                </Button>
-            </Card>
+            <div className="flex flex-col gap-6 xl:flex-row">
+                <Card className="col-span-6 w-full flex-col">
+                    <ClassList />
+                    <CreateClassWizard />
+                </Card>
+                <Card className="col-span-6 w-full flex-col">
+                    <TestsList />
+                    <CreateTestWizard />
+                </Card>
+            </div>
+
+            <div>
+                <Card className="w-fit">
+                    {data.user.name}
+                    <Button
+                        className="whitespace-nowrap"
+                        onClick={() => {
+                            void signOut();
+                        }}
+                    >
+                        Sign Out
+                    </Button>
+                </Card>
+            </div>
         </CardPanel>
     );
 };

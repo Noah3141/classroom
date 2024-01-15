@@ -20,7 +20,7 @@ const SubmitTestForm = z.object({
     choiceAnswers: z.array(ChoiceAnswer),
 });
 
-const GradedAnswer = z.object({
+const GradedChoiceAnswer = z.object({
     value: z.number(),
     questionId: z.string(),
     testTakerId: z.string(),
@@ -28,7 +28,7 @@ const GradedAnswer = z.object({
     correct: z.boolean(),
 });
 
-export type GradedAnswer = z.infer<typeof GradedAnswer>;
+export type GradedChoiceAnswer = z.infer<typeof GradedChoiceAnswer>;
 export type TextAnswer = z.infer<typeof TextAnswer>;
 export type ChoiceAnswer = z.infer<typeof ChoiceAnswer>;
 export type SubmitTestForm = z.infer<typeof SubmitTestForm>;
@@ -67,7 +67,7 @@ export const studentRouter = createTRPCRouter({
             if (!test) {
                 throw new TRPCError({
                     code: "NOT_FOUND",
-                    message: "No test found!",
+                    message: "The test in question could not be found!",
                 });
             }
 
@@ -76,6 +76,8 @@ export const studentRouter = createTRPCRouter({
                 await ctx.db.submittedTest.findFirst({
                     where: {
                         testTakerId: ctx.session.user.id,
+                        testId: input.testId,
+                        classId: input.classId,
                     },
                 });
 
@@ -90,6 +92,7 @@ export const studentRouter = createTRPCRouter({
 
             // Todo Offer update functionality?
 
+            // Create submission to start writing to
             const submission = await ctx.db.submittedTest.create({
                 data: {
                     testId: input.testId,
@@ -103,32 +106,35 @@ export const studentRouter = createTRPCRouter({
                 answerKey[question.id] = question.correctAnswer;
             });
 
-            const gradedAnswers: GradedAnswer[] = [];
-            input.choiceAnswers.map(async (studentAnswer) => {
-                const correct =
-                    studentAnswer.value === answerKey[studentAnswer.questionId];
+            const gradedChoiceAnswers: GradedChoiceAnswer[] =
+                input.choiceAnswers.map((studentAnswer) => {
+                    const correct =
+                        studentAnswer.value ===
+                        answerKey[studentAnswer.questionId];
 
-                const gradedAnswer = {
-                    value: studentAnswer.value,
-                    questionId: studentAnswer.questionId,
-                    testTakerId: ctx.session.user.id,
-                    submittedTestId: submission.id,
-                    correct,
-                };
+                    const gradedChoiceAnswer = {
+                        value: studentAnswer.value,
+                        questionId: studentAnswer.questionId,
+                        testTakerId: ctx.session.user.id,
+                        submittedTestId: submission.id,
+                        correct,
+                    };
 
-                gradedAnswers.push(gradedAnswer);
-            });
+                    return gradedChoiceAnswer;
+                });
 
             await ctx.db.choiceAnswer.createMany({
-                data: gradedAnswers,
+                data: gradedChoiceAnswers,
             });
 
+            // If no text answers, we can grade right away:
             if (!input.textAnswers.length) {
                 let numberCorrect = 0;
-                gradedAnswers.map((answer) => {
+                gradedChoiceAnswers.map((answer) => {
                     if (answer.correct) numberCorrect += 1;
                 });
-                const finalScore = numberCorrect / test.choiceQuestions.length;
+                const finalScore =
+                    (numberCorrect / test.choiceQuestions.length) * 100;
 
                 await ctx.db.submittedTest.update({
                     where: {
@@ -144,6 +150,22 @@ export const studentRouter = createTRPCRouter({
                     submission,
                 };
             } else {
+                const ungradedTextAnswers = input.textAnswers.map(
+                    (textAnswer) => {
+                        return {
+                            questionId: textAnswer.questionId,
+                            submittedTestId: submission.id,
+                            testTakerId: ctx.session.user.id,
+                            value: textAnswer.value,
+                            correct: null,
+                        };
+                    },
+                );
+
+                await ctx.db.textAnswer.createMany({
+                    data: ungradedTextAnswers,
+                });
+
                 return {
                     graded: false,
                     wasResubmit: wasResubmit,
@@ -154,27 +176,70 @@ export const studentRouter = createTRPCRouter({
     joinClass: studentProcedure
         .input(z.object({ classId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-            await ctx.db.class.update({
+            const classroom = await ctx.db.class.findUnique({
                 where: {
                     id: input.classId,
                 },
-                data: {
+                include: {
                     students: {
-                        connect: {
-                            id: ctx.session.user.id,
+                        select: {
+                            id: true,
                         },
                     },
                 },
             });
 
-            return true;
+            if (!classroom) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Couldn't locate the class in question!",
+                });
+            }
+
+            if (
+                classroom.students.some(
+                    (student) => student.id == ctx.session.user.id,
+                )
+            ) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "You appear to already be in this class!",
+                });
+            }
+
+            const res = await ctx.db.user.update({
+                where: { id: ctx.session.user.id },
+                data: {
+                    classes: {
+                        connect: { id: input.classId },
+                    },
+                },
+            });
+
+            const inClass = await ctx.db.class.findUnique({
+                where: { id: input.classId },
+                include: {
+                    students: {
+                        select: { id: true },
+                    },
+                },
+            });
+            if (
+                !inClass ||
+                !inClass.students.some(
+                    (student) => student.id == ctx.session.user.id,
+                )
+            ) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Something went wrong adding you to the class!",
+                });
+            }
         }),
     getClasses: studentProcedure.query(async ({ ctx }) => {
         return await ctx.db.class.findMany({
             where: {
-                students: {
-                    some: { id: ctx.session.user.id },
-                },
+                students: { some: { id: ctx.session.user.id } },
             },
             include: {
                 _count: true,

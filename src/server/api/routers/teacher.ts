@@ -67,6 +67,23 @@ export const teacherRouter = createTRPCRouter({
                 });
             }
 
+            const already_exists = await ctx.db.class.findFirst({
+                where: {
+                    title: input.title,
+                    season: input.season,
+                    schoolYear: input.year,
+                    teacherId: ctx.session.user.id,
+                },
+            });
+
+            if (!!already_exists) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message:
+                        "You appear to already have this exact class created! You'll have to modify one of the fields to create a new one.",
+                });
+            }
+
             const classroom = await ctx.db.class.create({
                 data: {
                     title: input.title,
@@ -91,7 +108,25 @@ export const teacherRouter = createTRPCRouter({
                 });
             }
 
-            return await ctx.db.class.delete({
+            const classroom = await ctx.db.class.findUnique({
+                where: { id: input.classId },
+            });
+
+            if (!classroom) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "No such class to remove!",
+                });
+            }
+
+            if (classroom.teacherId !== ctx.session.user.id) {
+                throw new TRPCError({
+                    code: "UNAUTHORIZED",
+                    message: "Hey, that's not your class!",
+                });
+            }
+
+            const deleted = await ctx.db.class.delete({
                 where: {
                     id: input.classId,
                 },

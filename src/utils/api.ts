@@ -69,5 +69,9 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export type ClassGottenById = RouterOutputs["class"]["getById"];
+export type ClassGottenByIdForStudent = RouterOutputs["class"]["getIfStudent"];
 export type TestGottenById = RouterOutputs["test"]["getById"];
 export type SubmitTestRes = RouterOutputs["student"]["submitTest"];
+export type GetClassrooms = RouterOutputs["student"]["getClasses"];
+export type ClassSubmissions = RouterOutputs["class"]["getSubmissions"];
+export type SubmissionWithFullTest = RouterOutputs["submission"]["getWithTest"];

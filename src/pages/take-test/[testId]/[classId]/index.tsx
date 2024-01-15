@@ -2,17 +2,16 @@ import { type ChoiceQuestion, type TextQuestion } from "@prisma/client";
 import { InferMutationLikeData } from "@trpc/react-query/shared";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/router";
-import React, { Dispatch, SetStateAction, useState } from "react";
+import React, { type Dispatch, type SetStateAction, useState } from "react";
 import toast from "react-hot-toast";
 import Button from "~/components/Button";
 import CardPanel from "~/components/CardPanel";
 import LoadingPage from "~/components/LoadingPage";
 import OopsiePage from "~/components/OopsiePage";
-import { SubmitTestForm } from "~/server/api/routers/student";
 import {
-    ClassGottenById,
-    SubmitTestRes,
-    TestGottenById,
+    type ClassGottenByIdForStudent,
+    type SubmitTestRes,
+    type TestGottenById,
     api,
 } from "~/utils/api";
 import { alphabetize } from "~/utils/tools";
@@ -20,6 +19,8 @@ import { alphabetize } from "~/utils/tools";
 import { PiChecks } from "react-icons/pi";
 import Link from "next/link";
 import { z } from "zod";
+import { Tooltip } from "react-tooltip";
+import { SubmitTestForm } from "~/server/api/routers/student";
 
 const TakeTestPage = () => {
     const session = useSession();
@@ -35,7 +36,7 @@ const TakeTestPage = () => {
     });
 
     const { data: classroom, isLoading: classroomLoading } =
-        api.class.getById.useQuery({
+        api.class.getIfStudent.useQuery({
             classId: classId,
         });
 
@@ -51,6 +52,19 @@ const TakeTestPage = () => {
         return <OopsiePage />;
     }
 
+    if (
+        !classroom.students.some(
+            (student) => student.id === session.data.user.id,
+        )
+    ) {
+        return (
+            <OopsiePage
+                msg={`You must be a member of this class to take its tests!\n${classroom.title} - ${classroom.season} 
+            ${classroom.schoolYear}`}
+            />
+        );
+    }
+
     return (
         <CardPanel>
             <Test test={test} classroom={classroom} />
@@ -62,7 +76,7 @@ export default TakeTestPage;
 
 type TestProps = {
     test: TestGottenById;
-    classroom: ClassGottenById;
+    classroom: ClassGottenByIdForStudent;
 };
 
 type TestForm = {
@@ -103,7 +117,7 @@ const Test = ({ test, classroom }: TestProps) => {
             onSuccess: (res: SubmitTestRes) => {
                 toast.success("Success!", { id: submitTestToast });
                 setSubmitted(true);
-                void dataState.test.invalidate();
+                void dataState.student.getSubmittedTests.invalidate();
             },
             onError: (e) => {
                 if (e.message.includes("already submitted")) {
@@ -117,12 +131,15 @@ const Test = ({ test, classroom }: TestProps) => {
 
     return (
         <div className="col-span-full mx-auto h-full w-full max-w-[1000px]">
-            <h1 className="mb-12 text-center text-lg">
-                {test.title} - {classroom.title}
+            <h1 className="mb-3 text-center text-xl">
+                {classroom.title} - {classroom.season} {classroom.schoolYear}
             </h1>
+            <h2 className="mb-12 text-center text-lg">{test.title}</h2>
             <form className="flex flex-col gap-12">
                 <div>
-                    <h2 className="mb-6">Multiple choice questions</h2>
+                    {!!test.choiceQuestions.length && (
+                        <h2 className="mb-6">Multiple choice questions</h2>
+                    )}
                     <div className="flex flex-col gap-12">
                         {test.choiceQuestions.map((cq, cqi) => {
                             return (
@@ -137,7 +154,9 @@ const Test = ({ test, classroom }: TestProps) => {
                     </div>
                 </div>
                 <div>
-                    <h2 className="mb-6">Response questions</h2>
+                    {!!test.textQuestions.length && (
+                        <h2 className="mb-6">Response questions</h2>
+                    )}
                     <div className="flex flex-col gap-6">
                         {test.textQuestions.map((tq, tqi) => {
                             return (
@@ -160,6 +179,7 @@ const Test = ({ test, classroom }: TestProps) => {
                         </Link>
                     )}
                     <Button
+                        disabled={statusSubmittingTest !== "idle"}
                         status={statusSubmittingTest}
                         onClick={(e) => {
                             e.preventDefault();
@@ -181,12 +201,11 @@ const Test = ({ test, classroom }: TestProps) => {
                                     const highlights = [
                                         "ring-1",
                                         "ring-red-500",
-                                        "ring-offset-4",
                                     ];
                                     input.classList.add(...highlights);
-                                    input.onfocus = (e) => {
-                                        input.classList.remove(...highlights);
-                                    };
+                                    input.addEventListener("mouseenter", () =>
+                                        input.classList.remove(...highlights),
+                                    );
                                 } else {
                                     throw err;
                                 }
@@ -209,7 +228,7 @@ function validateForm(form: TestForm): SubmitTestForm {
                 .parse(ca);
             return validAnswer;
         } catch {
-            const e = new Error(ca.questionId);
+            const e = new Error(`question-${cai}`);
             throw e;
         }
     });
@@ -218,13 +237,13 @@ function validateForm(form: TestForm): SubmitTestForm {
         try {
             const validAnswer = z
                 .object({
-                    value: z.string(),
+                    value: z.string().min(1),
                     questionId: z.string(),
                 })
                 .parse(ta);
             return validAnswer;
         } catch {
-            const e = new Error(ta.questionId);
+            const e = new Error(`tq-${tai}`);
             throw e;
         }
     });
@@ -252,7 +271,10 @@ const ChoiceQuestion = (props: ChoiceQuestionProps) => {
     }
 
     return (
-        <div className="rounded-sm" id={`question-${props.iter}`}>
+        <div
+            className="rounded-sm p-2  transition-all duration-200"
+            id={`question-${props.iter}`}
+        >
             <h3 className="mb-3">
                 {props.iter + 1}. {props.question.prompt}
             </h3>
@@ -267,6 +289,41 @@ const ChoiceQuestion = (props: ChoiceQuestionProps) => {
                             }`}
                             htmlFor={`${props.question.id}-${ci}`}
                         >
+                            {selected && (
+                                <Tooltip
+                                    clickable
+                                    delayHide={300}
+                                    delayShow={100}
+                                    anchorSelect={`#question-${props.iter}`}
+                                    place="right"
+                                >
+                                    <span
+                                        onClick={() => {
+                                            props.setForm((p) => {
+                                                const newQuestion = {
+                                                    ...questionInQuestion,
+                                                    value: undefined,
+                                                };
+
+                                                const newList = [
+                                                    ...p.choiceAnswers,
+                                                ];
+
+                                                newList[props.iter] =
+                                                    newQuestion;
+
+                                                return {
+                                                    ...p,
+                                                    choiceAnswers: newList,
+                                                };
+                                            });
+                                        }}
+                                        className="click-span self-end"
+                                    >
+                                        - Unselect answer
+                                    </span>
+                                </Tooltip>
+                            )}
                             <input
                                 onChange={(e) => {
                                     props.setForm((p) => {

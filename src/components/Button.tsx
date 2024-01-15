@@ -14,7 +14,7 @@ const Button = ({ className, status, children, ...props }: ButtonProps) => {
     }
     return (
         <button
-            className={`relative w-fit rounded-md p-3  transition-all
+            className={`relative w-fit rounded-md p-2 py-1  transition-all
             ${status == "loading" && "text-transparent"} 
             ${status == "success" && "bg-green-500 text-transparent"}
             ${status == "error" && "bg-red-600 text-transparent"} 

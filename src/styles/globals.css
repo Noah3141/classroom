@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    /* For Chrome */
+    ::-webkit-scrollbar {
+        @apply w-[6px];
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply rounded-full bg-stone-700;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-stone-950;
+    }
+
+    /* For Firefox */
+    /* Note: Firefox uses a pseudo-element for scrollbar styling */
+    * {
+        scrollbar-color: #888 #f1f1f1;
+    }
+
+    *::-moz-scrollbar-thumb {
+        @apply rounded-full bg-stone-700;
+    }
+
+    *::-moz-scrollbar-track {
+        background-color: #989898;
+    }
+}
+
 @layer components {
     .test-input {
         @apply w-full rounded-sm bg-stone-800 p-2 outline-none 

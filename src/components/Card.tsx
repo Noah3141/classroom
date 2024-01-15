@@ -9,7 +9,7 @@ const Card = ({
 }) => {
     return (
         <div
-            className={`mx-auto flex h-fit  max-w-full rounded-lg bg-stone-900 p-6 shadow-lg shadow-[#00000030] ${className}`}
+            className={`flex h-fit  max-w-full rounded-lg bg-stone-900 p-6 shadow-lg shadow-[#00000030] ${className}`}
         >
             {children}
         </div>
