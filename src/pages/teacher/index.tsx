@@ -240,6 +240,8 @@ const TeacherPage = () => {
 
     return (
         <CardPanel>
+            <h1>Teacher Panel</h1>
+
             <div className="flex flex-col gap-6 xl:flex-row">
                 <Card className="col-span-6 w-full flex-col">
                     <ClassList />

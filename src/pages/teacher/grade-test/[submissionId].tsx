@@ -267,6 +267,21 @@ const NormalDist = ({
     question: ChoiceQuestion;
     submission: SubmissionWithFullTest;
 }) => {
+    // const answers = submission.choiceAnswers
+    //     .filter((answer) => answer.questionId == question.id)
+    //     .sort((a, b) => b.frequency - a.frequency);
+
+    // console.log(answers);
+    // const gaussian: ChoiceAnswer[] = [];
+    // let side = true;
+    // while (answers.length) {
+    //     const nextHighest = answers.pop();
+    //     if (!nextHighest) {
+    //         return;
+    //     }
+    //     side ? gaussian.push(nextHighest) : gaussian.unshift(nextHighest);
+    //     side = !side;
+    // }
     const answersForThisQuestion = submission.allSubmissions
         .map((submission) => {
             return submission.choiceAnswers.filter(
@@ -327,7 +342,10 @@ const NormalDist = ({
                         <div className="flex h-full flex-col  justify-end border-b border-t border-amber-500">
                             <Bar percentage={answer.frequency * 100} />
                         </div>
-                        <span>{alphabetize(answer.value)}</span>
+                        <div className="h-6 ">{alphabetize(answer.value)}</div>
+                        <div className="h-6">
+                            {(answer.frequency * 100).toFixed(2)}%
+                        </div>
                     </div>
                 );
             })}
@@ -376,7 +394,7 @@ const AnswerStats = ({
     });
     const frequencyChosen = chosenCount / answersForThisQuestion.length;
 
-    return <div>{`${frequencyChosen * 100}%` ?? ""}</div>;
+    return <div>{`${(frequencyChosen * 100).toFixed(0)}%` ?? ""}</div>;
 };
 
 const GradeReadout = ({

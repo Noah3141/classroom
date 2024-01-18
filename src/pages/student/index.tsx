@@ -28,6 +28,7 @@ const StudentPage = () => {
 
     return (
         <CardPanel>
+            <h1>Student Panel</h1>
             <div className="flex flex-col gap-6 xl:flex-row">
                 <Card className="xl:w-4/12">
                     <div className="w-full">

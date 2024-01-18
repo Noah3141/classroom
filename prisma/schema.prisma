@@ -80,6 +80,7 @@ model Test {
     submissions     SubmittedTest[]
     lastSubmission  DateTime?
     classes         Class[]
+    createdAt       DateTime         @default(now())
 }
 
 model ChoiceQuestion {
@@ -118,7 +119,7 @@ model SubmittedTest {
     submissionDate DateTime @default(now())
     score          Int?
 
-    class   Class  @relation(fields: [classId], references: [id], onDelete: SetDefault)
+    class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
     classId String
 }
 

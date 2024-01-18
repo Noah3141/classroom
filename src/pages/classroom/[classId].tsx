@@ -137,7 +137,8 @@ const ClassPage = () => {
                             {tests.map((test) => {
                                 return (
                                     <option
-                                        className="rounded-sm bg-stone-900 hover:bg-stone-800"
+                                        id={`option-${test.id}`}
+                                        className="relative rounded-sm bg-stone-900 hover:bg-stone-800"
                                         value={test.id}
                                     >
                                         {test.title}

@@ -13,6 +13,7 @@ import LoadingPage from "~/components/LoadingPage";
 import OopsiePage from "~/components/OopsiePage";
 import { db } from "~/server/db";
 import { api } from "~/utils/api";
+import { dtfmt } from "~/utils/datetimeFormatter";
 import { alphabetize } from "~/utils/tools";
 
 const TestPanelPage = () => {
@@ -45,7 +46,7 @@ const TestPanelPage = () => {
             },
         });
 
-    const [filterByClass, setFilterByClass] = useState(true);
+    const [filterByClass, setFilterByClass] = useState<boolean | null>(null);
 
     const [classroom, setClassroom] = useState(
         test?.submissions.at(0)?.classId ?? null,
@@ -66,10 +67,12 @@ const TestPanelPage = () => {
             if (filterByClass && submission.classId !== classroom) return <></>;
 
             return (
-                <div>
-                    <div>{submission.testTaker.name}</div>
-                    <div>{submission.testTaker.email}</div>
-                    <div></div>
+                <div className="flex flex-row justify-between gap-3">
+                    <div className="w-1/2">{submission.testTaker.email}</div>
+                    <div className="grid w-full grid-cols-2 text-right">
+                        <div>{submission.score ?? "Not yet graded"}</div>
+                        <div>{dtfmt({ at: submission.submissionDate })}</div>
+                    </div>
                     <div></div>
                 </div>
             );
@@ -131,130 +134,136 @@ const TestPanelPage = () => {
 
     return (
         <CardPanel>
-            <Card className="col-span-full flex w-full flex-col">
-                <h1>{test.title}</h1>
-                <div className="flex flex-row gap-3">
-                    {classesLoading ? (
-                        ""
-                    ) : (
-                        <div>
-                            <span>Class: </span>
-                            <select
-                                onChange={(e) => {
-                                    setClassroom(e.target.value);
-                                }}
-                                className="rounded-sm bg-stone-950 p-1 outline-none hover:cursor-pointer hover:bg-stone-800 focus:cursor-text focus:bg-stone-950 focus:ring-2 focus:ring-amber-600"
-                                name=""
-                                id=""
-                            >
-                                <option value={undefined}></option>
-                                {ClassroomOptions}
-                            </select>
-                        </div>
-                    )}
-                </div>
-                <div className="mt-6">
-                    <div>Submissions:</div>
-                    <div className="flex flex-col">{SubmissionsList}</div>
-                </div>
-            </Card>
-            <div className="col-span-full flex flex-col gap-6 xl:flex-row">
-                <Card className="w-full">
-                    <div className="flex w-full flex-col gap-12">
-                        <div className="w-full">
-                            <h1>Multiple choice questions</h1>
-                            <div className="mt-6 w-full divide-y divide-stone-800">
-                                {ChoiceQuestions}
+            <div className="flex flex-col gap-6 lg:flex-row">
+                <Card className="flex w-1/2 flex-col">
+                    <h1>{test.title}</h1>
+                    <div className="flex flex-row gap-3">
+                        {classesLoading ? (
+                            ""
+                        ) : (
+                            <div>
+                                <span>Class: </span>
+                                <select
+                                    onChange={(e) => {
+                                        setClassroom(e.target.value);
+                                    }}
+                                    className="rounded-sm bg-stone-950 p-1 outline-none hover:cursor-pointer hover:bg-stone-800 focus:cursor-text focus:bg-stone-950 focus:ring-2 focus:ring-amber-600"
+                                    name=""
+                                    id=""
+                                >
+                                    <option value={undefined}></option>
+                                    {ClassroomOptions}
+                                </select>
                             </div>
-                        </div>
-                        <div>
-                            <h1>Response questions</h1>
-                            <div className="mt-6 w-full divide-y divide-stone-800">
-                                {TextQuestions}
-                            </div>
+                        )}
+                    </div>
+                    <div className="mt-6">
+                        <div>Submissions:</div>
+                        <div className="divide flex flex-col divide-stone-700">
+                            {SubmissionsList}
                         </div>
                     </div>
                 </Card>
-                <div className="flex flex-col gap-6 sm:flex-row xl:flex-col">
-                    <Card className="justify-center">
-                        <Button
-                            onClick={() => {
-                                if (!urlTestId) {
-                                    toast.error(
-                                        "The current page isn't doing well... Try coming back later!",
-                                    );
-                                    return;
-                                }
-                                void router.push(
-                                    `/create-test?testId=${urlTestId}`,
-                                );
-                            }}
-                            id="copy-to-draft"
-                        >
-                            Copy to Draft
-                        </Button>
-                        <Tooltip anchorSelect="#copy-to-draft">
-                            <span className="text-amber-600">
-                                Create a new test, starting from a copy of this
-                                one
-                            </span>
-                        </Tooltip>
+                <div className="flex w-6/12 flex-col gap-6 xl:flex-row">
+                    <Card className="w-full">
+                        <div className="flex w-full flex-col gap-12">
+                            <div className="w-full">
+                                <h1>Multiple choice questions</h1>
+                                <div className="mt-6 w-full divide-y divide-stone-800">
+                                    {ChoiceQuestions}
+                                </div>
+                            </div>
+                            <div>
+                                <h1>Response questions</h1>
+                                <div className="mt-6 w-full divide-y divide-stone-800">
+                                    {TextQuestions}
+                                </div>
+                            </div>
+                        </div>
                     </Card>
-                    <Card className="col-span-1 flex justify-center">
-                        <Link href={`/teacher`}>
-                            <Button>Teacher panel</Button>
-                        </Link>
-                    </Card>
-                    <Card className=" flex-row-reverse items-center justify-center gap-3">
-                        <span>{data.user.name}</span>
-                        <Button
-                            className="whitespace-nowrap"
-                            onClick={() => {
-                                void signOut();
-                            }}
-                        >
-                            Sign Out
-                        </Button>
-                    </Card>
-                    <Card className="col-span-2 flex  w-full flex-row items-center justify-center">
-                        <span id="remove-test-1" className="click-span">
-                            Remove test
-                        </span>
-                        <Tooltip
-                            place="bottom"
-                            clickable
-                            anchorSelect="#remove-test-1"
-                            delayHide={1500}
-                            delayShow={200}
-                        >
-                            <span id="remove-test-2" className="click-span">
-                                Are you sure?
-                            </span>
-                        </Tooltip>
-                        <Tooltip
-                            place="bottom"
-                            clickable
-                            isOpen={
-                                statusRemoving == "loading" ? true : undefined
-                            }
-                            anchorSelect="#remove-test-2"
-                            delayHide={0}
-                            delayShow={200}
-                        >
-                            <span
+                    <div className="flex w-full flex-col gap-6 md:flex-row lg:w-1/6 xl:flex-col">
+                        <Card className="justify-center">
+                            <Button
                                 onClick={() => {
-                                    removeTest({
-                                        testId: test.id,
-                                    });
+                                    if (!urlTestId) {
+                                        toast.error(
+                                            "The current page isn't doing well... Try coming back later!",
+                                        );
+                                        return;
+                                    }
+                                    void router.push(
+                                        `/create-test?testId=${urlTestId}`,
+                                    );
                                 }}
-                                className="click-span"
+                                id="copy-to-draft"
                             >
-                                {statusRemoving == "loading"
-                                    ? "Removing..."
-                                    : "> Remove <"}
+                                Copy to Draft
+                            </Button>
+                            <Tooltip anchorSelect="#copy-to-draft">
+                                <span className="text-amber-600">
+                                    Create a new test, starting from a copy of
+                                    this one
+                                </span>
+                            </Tooltip>
+                        </Card>
+                        <Card className="col-span-1 flex justify-center">
+                            <Link href={`/teacher`}>
+                                <Button>Teacher panel</Button>
+                            </Link>
+                        </Card>
+                        <Card className=" flex-row-reverse items-center justify-center gap-3">
+                            <span>{data.user.name}</span>
+                            <Button
+                                className="whitespace-nowrap"
+                                onClick={() => {
+                                    void signOut();
+                                }}
+                            >
+                                Sign Out
+                            </Button>
+                        </Card>
+                        <Card className="col-span-2 flex  w-full flex-row items-center justify-center">
+                            <span id="remove-test-1" className="click-span">
+                                Remove test
                             </span>
-                        </Tooltip>
-                    </Card>
+                            <Tooltip
+                                place="bottom"
+                                clickable
+                                anchorSelect="#remove-test-1"
+                                delayHide={1500}
+                                delayShow={200}
+                            >
+                                <span id="remove-test-2" className="click-span">
+                                    Are you sure?
+                                </span>
+                            </Tooltip>
+                            <Tooltip
+                                place="bottom"
+                                clickable
+                                isOpen={
+                                    statusRemoving == "loading"
+                                        ? true
+                                        : undefined
+                                }
+                                anchorSelect="#remove-test-2"
+                                delayHide={0}
+                                delayShow={200}
+                            >
+                                <span
+                                    onClick={() => {
+                                        removeTest({
+                                            testId: test.id,
+                                        });
+                                    }}
+                                    className="click-span"
+                                >
+                                    {statusRemoving == "loading"
+                                        ? "Removing..."
+                                        : "> Remove <"}
+                                </span>
+                            </Tooltip>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </CardPanel>
