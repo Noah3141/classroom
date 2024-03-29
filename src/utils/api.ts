@@ -74,4 +74,5 @@ export type TestGottenById = RouterOutputs["test"]["getById"];
 export type SubmitTestRes = RouterOutputs["student"]["submitTest"];
 export type GetClassrooms = RouterOutputs["student"]["getClasses"];
 export type ClassSubmissions = RouterOutputs["class"]["getSubmissions"];
-export type SubmissionWithFullTest = RouterOutputs["submission"]["getWithTest"];
+export type SubmissionWithTestAndStats =
+    RouterOutputs["submission"]["getWithTestAndStats"];

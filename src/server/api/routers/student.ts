@@ -12,13 +12,13 @@ const ChoiceAnswer = z.object({
     questionId: z.string(),
     value: z.number(),
 });
-
 const SubmitTestForm = z.object({
     testId: z.string(),
     classId: z.string(),
     textAnswers: z.array(TextAnswer),
     choiceAnswers: z.array(ChoiceAnswer),
 });
+
 
 const GradedChoiceAnswer = z.object({
     value: z.number(),

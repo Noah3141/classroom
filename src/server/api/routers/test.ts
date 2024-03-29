@@ -104,4 +104,61 @@ export const testRouter = createTRPCRouter({
                 },
             });
         }),
+
+    getByIdWithStats: teacherProcedure
+        .input(z.object({ testId: z.string().nullable() }))
+        .query(async ({ ctx, input }) => {
+            if (!input.testId) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Something went wrong...",
+                });
+            }
+            const test = await ctx.db.test.findUnique({
+                where: {
+                    id: input.testId,
+                },
+                include: {
+                    choiceQuestions: true,
+                    textQuestions: true,
+                    submissions: {
+                        include: { testTaker: true },
+                    },
+                    classes: true,
+                },
+            });
+
+            if (!test) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "No test found!",
+                });
+            }
+
+            const choiceAnswers = await ctx.db.choiceAnswer.findMany({
+                where: {
+                    questionId: {
+                        in: test.choiceQuestions.map((question) => question.id),
+                    },
+                },
+            });
+
+            test.choiceQuestions.forEach((question) => {
+                question.choices.map((choice, choiceIndex) => {
+                    let frequencyChosen = 0;
+                    choiceAnswers.forEach((answer) => {
+                        if (answer.value == choiceIndex) {
+                            frequencyChosen += 1;
+                        }
+                    });
+
+                    return {
+                        text: choice,
+                        frequencyChosen,
+                    };
+                });
+            });
+
+            return test;
+        }),
 });

@@ -38,6 +38,7 @@ export const teacherRouter = createTRPCRouter({
                 ...test,
             }));
         }),
+
     /** Get tests with their related objects */
     getTestsFull: teacherProcedure
         // .input(z.object())

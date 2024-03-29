@@ -12,18 +12,21 @@ import CardPanel from "~/components/CardPanel";
 import LoadingPage from "~/components/LoadingPage";
 import OopsiePage from "~/components/OopsiePage";
 import { db } from "~/server/db";
-import { api } from "~/utils/api";
-import { type SubmissionWithFullTest } from "~/utils/api";
+import { SubmissionWithTestAndStats, api } from "~/utils/api";
 import { alphabetize } from "~/utils/tools";
+import {
+    ChoiceQuestionWithStats,
+    type ChoiceWithStats,
+} from "~/server/api/utils/dataCombinations";
 
 const GradeTestPage = () => {
-    const { data, status } = useSession();
+    const { status } = useSession();
     const router = useRouter();
 
     const urlSubmissionId = (router.query.submissionId as string) ?? null;
 
-    const { data: submission, isLoading: testLoading } =
-        api.submission.getWithTest.useQuery({
+    const { data, isLoading: dataLoading } =
+        api.submission.getWithTestAndStats.useQuery({
             submissionId: urlSubmissionId,
         });
 
@@ -44,13 +47,13 @@ const GradeTestPage = () => {
             },
         });
 
-    if (status == "loading" || testLoading) return <LoadingPage />;
+    if (status == "loading" || dataLoading) return <LoadingPage />;
 
     if (status != "authenticated") {
         void signIn("email");
         return;
     }
-    if (!submission) {
+    if (!data) {
         return <OopsiePage />;
     }
 
@@ -63,20 +66,19 @@ const GradeTestPage = () => {
             </div>
             <div className="mx-auto flex w-full max-w-6xl flex-col">
                 <h1 className="mb-3 text-center text-xl">
-                    {submission.class.title} - {submission.class.season}{" "}
-                    {submission.class.schoolYear}
+                    {data.submission.class.title} -{" "}
+                    {data.submission.class.season}{" "}
+                    {data.submission.class.schoolYear}
                 </h1>
-                <h2 className="mb-12 text-center text-lg">
-                    {submission.test.title}
-                </h2>
+                <h2 className="mb-12 text-center text-lg">{data.test.title}</h2>
                 <div>
-                    <ChoiceQuestions submission={submission} />
+                    <ChoiceQuestions data={data} />
                 </div>
                 <div>
-                    <TextQuestions submission={submission} />
+                    <TextQuestions data={data} />
                 </div>
                 <div>
-                    <GradeReadout submission={submission} />
+                    <GradeReadout data={data} />
                 </div>
             </div>
         </CardPanel>
@@ -85,25 +87,21 @@ const GradeTestPage = () => {
 
 export default GradeTestPage;
 
-const TextQuestions = ({
-    submission,
-}: {
-    submission: SubmissionWithFullTest;
-}) => {
-    if (!submission.test.textQuestions.length) {
+const TextQuestions = ({ data }: { data: SubmissionWithTestAndStats }) => {
+    if (!data.test.textQuestions.length) {
         return <></>;
     }
     return (
         <div className="mt-12">
             <h3 className="mb-6">Response questions</h3>
             <div>
-                {submission.test.textQuestions.map((tq, tqi) => {
+                {data.test.textQuestions.map((tq, tqi) => {
                     return (
                         <div key={tqi}>
                             <h4 className="mb-3">{tq.prompt}</h4>
                             <div className="rounded-md border border-amber-600 p-3">
                                 {
-                                    submission.textAnswers.find(
+                                    data.submission.textAnswers.find(
                                         (a) => tq.id == a.questionId,
                                     )?.value
                                 }
@@ -116,21 +114,17 @@ const TextQuestions = ({
     );
 };
 
-const ChoiceQuestions = ({
-    submission,
-}: {
-    submission: SubmissionWithFullTest;
-}) => {
+const ChoiceQuestions = ({ data }: { data: SubmissionWithTestAndStats }) => {
     const [detailsExpanded, setDetailsExpanded] = useState<string | null>(null);
 
-    if (!submission.test.choiceQuestions.length) {
+    if (!data.test.choiceQuestions.length) {
         return <></>;
     }
     return (
         <div>
             <h3 className="mb-6">Choice questions</h3>
             <div className="flex flex-col gap-6 ps-8 md:px-6">
-                {submission.test.choiceQuestions.map((cq, cqi) => {
+                {data.test.choiceQuestions.map((cq, cqi) => {
                     const expanded: boolean = detailsExpanded == cq.id;
 
                     return (
@@ -149,81 +143,11 @@ const ChoiceQuestions = ({
                             <h4 className="mb-3">
                                 {cqi + 1}. {cq.prompt}
                             </h4>
-                            <div className="grid grid-cols-1 gap-y-2 md:grid-cols-2 md:gap-3">
-                                {cq.choices.map((c, ci) => {
-                                    const isSubmissionsAnswer: boolean =
-                                        submission.choiceAnswers[cqi]!.value ===
-                                        ci;
-
-                                    const correctAnswer =
-                                        cq.correctAnswer == ci;
-
-                                    const iconSide =
-                                        ci % 2 == 0 ? "left" : "right";
-
-                                    return (
-                                        <span
-                                            key={ci}
-                                            className={`relative  rounded-sm border-[1px] p-1 ${
-                                                isSubmissionsAnswer
-                                                    ? "border-amber-600"
-                                                    : "border-transparent"
-                                            }
-                                            ${
-                                                correctAnswer
-                                                    ? "bg-[#8dfa2e25]"
-                                                    : ""
-                                            }
-                                            ${
-                                                isSubmissionsAnswer &&
-                                                !correctAnswer
-                                                    ? "bg-[#ff4d3130]"
-                                                    : ""
-                                            }
-                                            `}
-                                            id={`${cq.id}-${ci}`}
-                                        >
-                                            {(isSubmissionsAnswer ||
-                                                correctAnswer) && (
-                                                <Tooltip
-                                                    anchorSelect={`#${cq.id}-${ci}`}
-                                                >
-                                                    <span className="text-amber-600">
-                                                        <div>
-                                                            {correctAnswer &&
-                                                                "Correct answer"}
-                                                        </div>
-                                                        <div>
-                                                            {isSubmissionsAnswer &&
-                                                                "Student answer"}
-                                                        </div>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-                                            <span>
-                                                {alphabetize(ci)}. {c}
-                                            </span>
-                                            <span
-                                                className={`absolute ${
-                                                    iconSide == "left" &&
-                                                    "-left-4 -translate-x-full"
-                                                }
-                                                ${
-                                                    iconSide == "right" &&
-                                                    "-left-4 -translate-x-full md:-right-4 md:translate-x-full"
-                                                }
-                                                `}
-                                            >
-                                                <AnswerStats
-                                                    ci={ci}
-                                                    questionId={cq.id}
-                                                    submission={submission}
-                                                />
-                                            </span>
-                                        </span>
-                                    );
-                                })}
-                            </div>
+                            <ChoiceAnswerList
+                                choiceQuestionIndex={cqi}
+                                choiceQuestion={cq}
+                                choiceAnswers={data.submission.choiceAnswers}
+                            />
                             <div
                                 className={`flex flex-col justify-between transition-all duration-300 ${
                                     expanded
@@ -232,11 +156,7 @@ const ChoiceQuestions = ({
                                 }`}
                             >
                                 <div className="h-full border-y border-amber-600 bg-stone-950 md:m-3 md:rounded-md md:border-x">
-                                    <NormalDist
-                                        question={cq}
-                                        questionId={cq.id}
-                                        submission={submission}
-                                    />
+                                    <NormalDist question={{ ...cq }} />
                                 </div>
                                 <div className="flex flex-row justify-end px-3">
                                     <span
@@ -258,97 +178,183 @@ const ChoiceQuestions = ({
     );
 };
 
-const NormalDist = ({
-    submission,
-    questionId,
-    question,
+const ChoiceAnswerList = ({
+    choiceQuestion,
+    choiceAnswers,
+    choiceQuestionIndex,
 }: {
-    questionId: string;
-    question: ChoiceQuestion;
-    submission: SubmissionWithFullTest;
+    choiceAnswers: ChoiceAnswer[];
+    choiceQuestion: ChoiceQuestionWithStats;
+    choiceQuestionIndex: number;
 }) => {
-    // const answers = submission.choiceAnswers
-    //     .filter((answer) => answer.questionId == question.id)
-    //     .sort((a, b) => b.frequency - a.frequency);
+    return (
+        <div className="grid grid-cols-1 gap-y-2 md:grid-cols-2 md:gap-3">
+            {choiceQuestion.choices.map((c, ci) => {
+                const isSubmissionsAnswer: boolean =
+                    choiceAnswers[choiceQuestionIndex]!.value === ci;
 
-    // console.log(answers);
-    // const gaussian: ChoiceAnswer[] = [];
-    // let side = true;
-    // while (answers.length) {
-    //     const nextHighest = answers.pop();
-    //     if (!nextHighest) {
-    //         return;
-    //     }
-    //     side ? gaussian.push(nextHighest) : gaussian.unshift(nextHighest);
-    //     side = !side;
-    // }
-    const answersForThisQuestion = submission.allSubmissions
-        .map((submission) => {
-            return submission.choiceAnswers.filter(
-                (ca) => ca.questionId == questionId,
-            );
-        })
-        .flat(1);
+                const correctAnswer = choiceQuestion.correctAnswer == ci;
 
-    type ChoiceStat = {
-        value: number;
-        prompt: string;
-        frequency: number;
-    };
+                const iconSide = ci % 2 == 0 ? "left" : "right";
 
-    const choices = question.choices.map((choice, ci, choicesList) => {
-        let chosenCount = 0;
-        answersForThisQuestion.map((answer) => {
-            if (answer.value == ci) {
-                chosenCount += 1;
+                return (
+                    <span
+                        key={ci}
+                        className={`relative  rounded-sm border-[1px] p-1 ${
+                            isSubmissionsAnswer
+                                ? "border-amber-600"
+                                : "border-transparent"
+                        }
+                    ${correctAnswer ? "bg-[#8dfa2e25]" : ""}
+                    ${
+                        isSubmissionsAnswer && !correctAnswer
+                            ? "bg-[#ff4d3130]"
+                            : ""
+                    }
+                    `}
+                        id={`${choiceQuestion.id}-${ci}`}
+                    >
+                        {(isSubmissionsAnswer || correctAnswer) && (
+                            <Tooltip
+                                anchorSelect={`#${choiceQuestion.id}-${ci}`}
+                            >
+                                <span className="text-amber-600">
+                                    <div>
+                                        {correctAnswer && "Correct answer"}
+                                    </div>
+                                    <div>
+                                        {isSubmissionsAnswer &&
+                                            "Student answer"}
+                                    </div>
+                                </span>
+                            </Tooltip>
+                        )}
+                        <span>
+                            {alphabetize(ci)}. {c.text}
+                        </span>
+                        <span
+                            className={`absolute ${
+                                iconSide == "left" &&
+                                "-left-4 -translate-x-full"
+                            }
+                        ${
+                            iconSide == "right" &&
+                            "-left-4 -translate-x-full md:-right-4 md:translate-x-full"
+                        }
+                        `}
+                        >
+                            <div>
+                                {`${(c.frequencyChosen * 100).toFixed(0)}%` ??
+                                    ""}
+                            </div>
+                        </span>
+                    </span>
+                );
+            })}
+        </div>
+    );
+};
+
+const NormalDist = ({ question }: { question: ChoiceQuestionWithStats }) => {
+    const [arrangement, setArrangement] = useState<
+        "gaussian" | "alphabetical" | "frequency"
+    >("alphabetical");
+
+    const choices = [...question.choices];
+    choices.sort((a, b) => a.frequencyChosen - b.frequencyChosen);
+
+    let displayChoices: ChoiceWithStats[] = [];
+
+    switch (arrangement) {
+        case "gaussian":
+            let side = true;
+            while (choices.length) {
+                const nextHighest = choices.pop();
+                if (!nextHighest) {
+                    return;
+                }
+                side
+                    ? displayChoices.push(nextHighest)
+                    : displayChoices.unshift(nextHighest);
+                side = !side;
             }
-        });
-        const labeledChoice = {
-            value: ci,
-            prompt: choice,
-            frequency: chosenCount / answersForThisQuestion.length,
-        };
-        if (question.prompt.startsWith("What is the capital")) {
-            console.log(labeledChoice);
-        }
+            break;
 
-        return labeledChoice;
-    });
-    if (question.prompt.startsWith("What is the capital")) {
-        console.log("Choices: ", choices);
-    }
-
-    choices.sort((a, b) => a.frequency - b.frequency);
-
-    const gaussian: ChoiceStat[] = [];
-    let side = true;
-    while (choices.length) {
-        const nextHighest = choices.pop();
-        if (!nextHighest) {
-            return;
-        }
-        side ? gaussian.push(nextHighest) : gaussian.unshift(nextHighest);
-        side = !side;
+        case "alphabetical":
+            displayChoices = choices;
+            displayChoices.sort(
+                (choiceA, choiceB) => choiceA.value - choiceB.value,
+            );
+            break;
+        case "frequency":
+            displayChoices = choices;
+            displayChoices.sort(
+                (choiceA, choiceB) =>
+                    choiceB.frequencyChosen - choiceA.frequencyChosen,
+            );
+            break;
     }
 
     return (
-        <div className="flex h-full w-full flex-row justify-between gap-3 p-6">
-            {gaussian.map((answer, i) => {
-                return (
-                    <div
-                        key={i}
-                        className="mx-auto flex flex-col items-center "
-                    >
-                        <div className="flex h-full flex-col  justify-end border-b border-t border-amber-500">
-                            <Bar percentage={answer.frequency * 100} />
+        <div className="flex h-full flex-row">
+            <div className="flex h-full  flex-col justify-center gap-6  p-6 ">
+                <Button
+                    onClick={() => {
+                        setArrangement("alphabetical");
+                    }}
+                    selected={arrangement == "alphabetical"}
+                >
+                    Original
+                </Button>
+                <Button
+                    onClick={() => {
+                        setArrangement("gaussian");
+                    }}
+                    selected={arrangement == "gaussian"}
+                >
+                    Gaussian
+                </Button>
+                <Button
+                    onClick={() => {
+                        setArrangement("frequency");
+                    }}
+                    selected={arrangement == "frequency"}
+                >
+                    Frequency
+                </Button>
+            </div>
+            <div className="flex h-full w-full flex-row justify-between gap-3  p-6">
+                {displayChoices.map((answer, i) => {
+                    return (
+                        <div
+                            key={i}
+                            id={`${question.id}-answer-${i}`}
+                            className="mx-auto flex flex-col items-center "
+                        >
+                            <div className="flex h-full flex-col  justify-end border-b-2 border-t border-amber-700 py-[1px]">
+                                <Bar
+                                    percentage={answer.frequencyChosen * 100}
+                                />
+                            </div>
+                            <div className="h-6 ">
+                                {alphabetize(answer.value)}
+                            </div>
+                            <div className="h-6">
+                                {(answer.frequencyChosen * 100).toFixed(2)}%
+                            </div>
+                            <Tooltip
+                                place="bottom"
+                                opacity={100}
+                                anchorSelect={`#${question.id}-answer-${i}`}
+                            >
+                                <span className="text-amber-600">
+                                    {answer.text}
+                                </span>
+                            </Tooltip>
                         </div>
-                        <div className="h-6 ">{alphabetize(answer.value)}</div>
-                        <div className="h-6">
-                            {(answer.frequency * 100).toFixed(2)}%
-                        </div>
-                    </div>
-                );
-            })}
+                    );
+                })}
+            </div>
         </div>
     );
 };
@@ -369,38 +375,6 @@ const Bar = ({ percentage }: { percentage: number }) => {
 //     submission: SubmissionWithFullTest;
 // }) => {};
 
-const AnswerStats = ({
-    submission,
-    questionId,
-    ci,
-}: {
-    questionId: string;
-    ci: number;
-    submission: SubmissionWithFullTest;
-}) => {
-    const answersForThisQuestion = submission.allSubmissions
-        .map((submission) => {
-            return submission.choiceAnswers.filter(
-                (ca) => ca.questionId == questionId,
-            );
-        })
-        .flat(1);
-
-    let chosenCount = 0;
-    answersForThisQuestion.forEach((answer) => {
-        if (answer.value == ci) {
-            chosenCount += 1;
-        }
-    });
-    const frequencyChosen = chosenCount / answersForThisQuestion.length;
-
-    return <div>{`${(frequencyChosen * 100).toFixed(0)}%` ?? ""}</div>;
-};
-
-const GradeReadout = ({
-    submission,
-}: {
-    submission: SubmissionWithFullTest;
-}) => {
+const GradeReadout = ({ data }: { data: SubmissionWithTestAndStats }) => {
     return <div></div>;
 };

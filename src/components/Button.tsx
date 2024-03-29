@@ -4,11 +4,18 @@ type ButtonProps = {
     children: ReactNode;
     className?: string;
     status?: "error" | "idle" | "loading" | "success";
+    selected?: boolean;
 } & React.DetailedHTMLProps<
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     HTMLButtonElement
 >;
-const Button = ({ className, status, children, ...props }: ButtonProps) => {
+const Button = ({
+    className,
+    status,
+    children,
+    selected,
+    ...props
+}: ButtonProps) => {
     if (!status) {
         status = "idle";
     }
@@ -22,6 +29,7 @@ const Button = ({ className, status, children, ...props }: ButtonProps) => {
                 status == "idle" &&
                 "bg-amber-600 text-stone-950 hover:bg-amber-700"
             } 
+            ${selected && "cursor-default bg-[#8dfa2e36] hover:bg-[#8dfa2e36]"}
             ${className}
             `}
             {...props}

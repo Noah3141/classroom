@@ -131,9 +131,6 @@ model ChoiceAnswer {
     submittedTestId String
     correct         Boolean
 
-    // Stats after submitting:
-    frequency Int
-
     @@unique([testTakerId, questionId])
 }
 

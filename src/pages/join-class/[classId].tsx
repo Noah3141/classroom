@@ -23,6 +23,8 @@ const JoinClassPage = () => {
 
     const dataState = api.useUtils();
     const joinClassToast = "JoinClassToastId";
+
+
     const { mutate: joinClass, isLoading: joiningLoading } =
         api.student.joinClass.useMutation({
             onMutate: () => {
@@ -37,6 +39,9 @@ const JoinClassPage = () => {
                 toast.error(e.message, { id: joinClassToast });
             },
         });
+
+
+        
 
     if (status == "loading" || classroomLoading) return <LoadingPage />;
 

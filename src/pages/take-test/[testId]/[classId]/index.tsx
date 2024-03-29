@@ -105,6 +105,7 @@ const Test = ({ test, classroom }: TestProps) => {
             value: undefined,
         })),
     };
+    const [form, setForm] = useState<TestForm>(BlankTest);
 
     const [submitted, setSubmitted] = useState(false);
     const submitTestToast = "SubmitTestToastId";
@@ -126,8 +127,6 @@ const Test = ({ test, classroom }: TestProps) => {
                 toast.error(e.message, { id: submitTestToast });
             },
         });
-
-    const [form, setForm] = useState<TestForm>(BlankTest);
 
     return (
         <div className="col-span-full mx-auto h-full w-full max-w-[1000px]">
